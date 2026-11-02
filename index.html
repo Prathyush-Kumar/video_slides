@@ -5,35 +5,68 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Slideshow</title>
 <style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    background: #000;
-    overflow: hidden;
-  }
-  video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;   /* use "cover" to fill the window and crop edges */
-    background: #000;
-    pointer-events: none;  /* blocks clicks and the right-click menu on the video */
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: absolute; transform-origin: top left; }
+  #msg {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #aaa; font: 1rem system-ui, sans-serif; text-align: center; padding: 2rem;
   }
 </style>
 </head>
 <body>
 
-<video id="v" src="Avatar_Interviewer.mp4" autoplay muted loop playsinline
-       disablepictureinpicture disableremoteplayback
-       controlslist="nodownload noplaybackrate noremoteplayback"></video>
+<div id="msg">Loading…</div>
+<div id="stage"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js"></script>
 <script>
-  const video = document.getElementById('v');
-  video.play().catch(() => {});
-  document.addEventListener('contextmenu', e => e.preventDefault());
-  document.addEventListener('keydown', e => {
-    if (e.code === 'Space' || e.key === 'k') e.preventDefault();
-  });
-  video.addEventListener('pause', () => video.play().catch(() => {}));
+  // ---------- Settings: change these ----------
+  const PPTX_URL = "Avatar_Interviewer.pptx"; // file in the same repo folder, or a full raw.githubusercontent.com URL
+  const SECONDS  = 5;           // time per slide
+  const SLIDE_W  = 960;         // 16:9 slides. For 4:3 decks use 960 x 720
+  const SLIDE_H  = 540;
+  // --------------------------------------------
+
+  const stage = document.getElementById('stage');
+  const msg = document.getElementById('msg');
+
+  // Scale the slide to fit the browser window
+  function fit() {
+    const s = Math.min(innerWidth / SLIDE_W, innerHeight / SLIDE_H);
+    stage.style.transform = `scale(${s})`;
+    stage.style.left = (innerWidth  - SLIDE_W * s) / 2 + 'px';
+    stage.style.top  = (innerHeight - SLIDE_H * s) / 2 + 'px';
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  async function run() {
+    try {
+      const res = await fetch(PPTX_URL);
+      if (!res.ok) throw new Error('Could not load ' + PPTX_URL + ' (' + res.status + ')');
+      const buf = await res.arrayBuffer();
+
+      const viewer = pptxPreview.init(stage, { width: SLIDE_W, height: SLIDE_H, mode: 'slide' });
+      await viewer.preview(buf);
+
+      // Hide the library's built-in next/prev buttons and page counter
+      [...viewer.wrapper.children].forEach(el => {
+        if (!/pptx-preview-slide-wrapper/.test(el.className)) el.style.display = 'none';
+      });
+      viewer.wrapper.style.overflow = 'hidden';
+
+      msg.remove();
+
+      // Advance every N seconds; after the last slide it loops back to the first
+      if (viewer.slideCount > 1) {
+        setInterval(() => viewer.renderNextSlide(), SECONDS * 1000);
+      }
+    } catch (err) {
+      console.error(err);
+      msg.textContent = 'Could not load the slideshow. Check that the PPTX file name/path is correct and that the page is served over http(s), not opened as a local file.';
+    }
+  }
+  run();
 </script>
 </body>
 </html>
