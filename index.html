@@ -6,7 +6,7 @@
 <title>Slideshow</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  #stage { position: absolute; transform-origin: top left; }
+  #stage { position: absolute; transform-origin: top left; opacity: 0; transition: opacity 0.7s ease; }
   #msg {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #aaa; font: 1rem system-ui, sans-serif; text-align: center; padding: 2rem;
@@ -21,8 +21,9 @@
 <script src="https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js"></script>
 <script>
   // ---------- Settings: change these ----------
-  const PPTX_URL = "Avatar_Interviewer.pptx"; // file in the same repo folder, or a full raw.githubusercontent.com URL
-  const SECONDS  = 5;           // time per slide
+  const PPTX_URL = "Avatar_interviewer.pptx"; // file in the same repo folder, or a full raw.githubusercontent.com URL
+  const SECONDS  = 5;           // time per slide (includes the fade)
+  const FADE_MS  = 700;         // fade out/in duration in milliseconds
   const SLIDE_W  = 960;         // 16:9 slides. For 4:3 decks use 960 x 720
   const SLIDE_H  = 540;
   // --------------------------------------------
@@ -56,10 +57,18 @@
       viewer.wrapper.style.overflow = 'hidden';
 
       msg.remove();
+      stage.style.transitionDuration = FADE_MS + 'ms';
+      requestAnimationFrame(() => { stage.style.opacity = 1; }); // fade in first slide
 
-      // Advance every N seconds; after the last slide it loops back to the first
+      // Every N seconds: fade out, switch slide, fade in. Loops after the last slide.
       if (viewer.slideCount > 1) {
-        setInterval(() => viewer.renderNextSlide(), SECONDS * 1000);
+        setInterval(() => {
+          stage.style.opacity = 0;
+          setTimeout(() => {
+            viewer.renderNextSlide();
+            stage.style.opacity = 1;
+          }, FADE_MS);
+        }, SECONDS * 1000);
       }
     } catch (err) {
       console.error(err);
