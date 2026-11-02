@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slideshow</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;   /* use "cover" to fill the screen and crop edges */
+    background: #000;
+    pointer-events: none;  /* blocks clicks and the right-click menu on the video */
+  }
+  body.idle { cursor: none; }
+  #start {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font: 500 1.25rem system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: opacity 0.4s;
+  }
+  #start.hidden { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<video id="v" src="Avatar_Interviewer.mp4" autoplay muted loop playsinline
+       disablepictureinpicture disableremoteplayback
+       controlslist="nodownload noplaybackrate noremoteplayback"></video>
+
+<div id="start">Click anywhere for fullscreen</div>
+
+<script>
+  const video = document.getElementById('v');
+  const start = document.getElementById('start');
+
+  // Try to autoplay right away (works because the video is muted)
+  video.play().catch(() => {});
+
+  // First click: enter fullscreen, make sure video is playing, hide the prompt
+  start.addEventListener('click', () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) req.call(el).catch(() => {});
+    video.play().catch(() => {});
+    start.classList.add('hidden');
+  });
+
+  // Block the context menu and keyboard play/pause
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.key === 'k') e.preventDefault();
+  });
+
+  // If something pauses the video, resume it
+  video.addEventListener('pause', () => video.play().catch(() => {}));
+
+  // Hide the mouse cursor after 2 seconds of no movement
+  let t;
+  function wake() {
+    document.body.classList.remove('idle');
+    clearTimeout(t);
+    t = setTimeout(() => document.body.classList.add('idle'), 2000);
+  }
+  document.addEventListener('mousemove', wake);
+  wake();
+
+  // If the user leaves fullscreen (Esc), show the prompt again
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) start.classList.remove('hidden');
+  });
+</script>
+</body>
+</html>
